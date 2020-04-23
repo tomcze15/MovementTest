@@ -24,13 +24,6 @@ namespace CharacterController.ThirdPerson
                 Rigidbody = GetComponent<Rigidbody>();
         }
 
-        private void LateUpdate()
-        {
-            //var cvel = Rigidbody.velocity;
-            //var tvel = cvel.normalized * thrust;
-            //Rigidbody.velocity = Vector3.Lerp(cvel, tvel, Time.deltaTime * smoothingFactor);
-        }
-
         // Update is called once per frame
         void Update()
         {

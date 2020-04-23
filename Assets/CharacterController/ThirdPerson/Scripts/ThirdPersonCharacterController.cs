@@ -31,7 +31,7 @@ namespace CharacterController.ThirdPerson
         [SerializeField] CapsuleCollider CapsuleCollider;
 
 #if RAY
-        [SerializeField] [Range(0.0f, 10.0f)] float DistanceRay = 5.0f;
+        [SerializeField] [Range(0.0f, 3.0f)] float DistanceRay = 1.0f;
 #endif
 
         // Start is called before the first frame update
@@ -64,11 +64,7 @@ namespace CharacterController.ThirdPerson
                 Rigidbody.velocity = transform.forward * thrust * 0.5f * Input.GetAxis("Vertical");
             }
 
-            //if (Rigidbody.velocity.magnitude < .01)
-            //{
-            //    Rigidbody.velocity = Vector3.zero;
-            //    Rigidbody.angularVelocity = Vector3.zero;
-            //}
+            CheckGroundStatus();
 
             if (!Grounded)
                 UpdateInTheAir();
@@ -97,7 +93,6 @@ namespace CharacterController.ThirdPerson
             transform.Rotate(0, m_TurnAmount * (turnSpeed * TurnSpeed) * Time.deltaTime, 0);
         }
 
-
         void UpdateInTheAir()
         {
             Vector3 extraGravityForce = (Physics.gravity * GravityMultiplier) - Physics.gravity;
@@ -111,28 +106,29 @@ namespace CharacterController.ThirdPerson
             //Promień kuli
             Vector3 curve = bottom + (Vector3.up * CapsuleCollider.radius);
 #if RAY
-            Debug.DrawRay(transform.position, -Vector3.up * DistanceRay, Color.blue);
+            Debug.DrawRay(curve, -Vector3.up * DistanceRay, Color.blue);
 #endif
             RaycastHit hit;
 
-            if (Physics.Raycast(transform.position, -Vector3.up, out hit, DistanceRay))
+            if (Physics.Raycast(curve, -Vector3.up, out hit, DistanceRay))
             {
-                if (hit.transform.tag == "Player")
-                    Grounded = false;
                 Grounded = true;
+                return;
             }
+            Grounded = false;
+            return;
         }
 
         private void DebugInfo()
         {
 #if RIGIDBODY
-            Debug.Log("TH1 Velocity: " + Rigidbody.velocity);
+            Debug.Log("Velocity: " + Rigidbody.velocity);
 #endif
 #if MOVEMENT
-            if (MoveLeft) Debug.Log("TH1 Move Left");
-            if (MoveRight) Debug.Log("TH1 Move Right");
-            if (MoveForward) Debug.Log("TH1 Move Forward");
-            if (MoveBack) Debug.Log("TH1 Move Back");
+            if (MoveLeft)       Debug.Log("Move Left"   );
+            if (MoveRight)      Debug.Log("Move Right"  );
+            if (MoveForward)    Debug.Log("Move Forward");
+            if (MoveBack)       Debug.Log("Move Back"   );
 #endif
         }
     }
