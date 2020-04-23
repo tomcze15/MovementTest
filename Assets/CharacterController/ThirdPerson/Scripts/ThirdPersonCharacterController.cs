@@ -25,14 +25,13 @@ namespace CharacterController.ThirdPerson
         [SerializeField] [Range(0.0f, 10.0f)] float TurnSpeed           = 1.0f;
         [SerializeField] [Range(0.0f, 10.0f)] float SlowDownSpeed       = 1.0f;
         [SerializeField] [Range(0.0f, 10.0f)] float GravityMultiplier   = 2.0f;
+        [SerializeField] [Range(0.0f, 10.0f)] float JumpForce           = 2.0f;
+        [SerializeField] Vector3 WalkDirection = Vector3.zero;
 
         [Header("Compontents")]
         [SerializeField] Rigidbody Rigidbody;
         [SerializeField] CapsuleCollider CapsuleCollider;
-
-#if RAY
         [SerializeField] [Range(0.0f, 3.0f)] float DistanceRay = 1.0f;
-#endif
 
         // Start is called before the first frame update
         void Start()
@@ -43,31 +42,60 @@ namespace CharacterController.ThirdPerson
 
         private void FixedUpdate()
         {
+            WalkDirection = Vector3.zero;
+            bool ControlForward = true;
+
+            if (MoveForward && MoveBack)
+            {
+                Rigidbody.velocity = Vector3.zero;
+                return;
+            }
+
+            if (MoveLeft && MoveRight)
+            {
+                Rigidbody.velocity = Vector3.zero;
+                return;
+            }
+
             if (MoveLeft)
             {
-                Rigidbody.velocity = transform.right * thrust * 0.5f * Input.GetAxis("Horizontal");
+                WalkDirection += transform.right * thrust * 0.5f * Input.GetAxis("Horizontal");
+                ControlForward = false;
             }
 
             if (MoveRight)
             {
-                Rigidbody.velocity = transform.right * thrust * 0.5f * Input.GetAxis("Horizontal");
+                WalkDirection += transform.right * thrust * 0.5f * Input.GetAxis("Horizontal");
+                ControlForward = false;
             }
 
             if (MoveForward)
             {
-                Rigidbody.velocity = transform.forward * thrust * Input.GetAxis("Vertical");
-                RotateToDirectionCamera();
+                WalkDirection += transform.forward * thrust * Input.GetAxis("Vertical");
             }
 
             if (MoveBack)
             {
-                Rigidbody.velocity = transform.forward * thrust * 0.5f * Input.GetAxis("Vertical");
+                WalkDirection += transform.forward * thrust * 0.5f * Input.GetAxis("Vertical");
+                ControlForward = false;
             }
 
+            if(ControlForward)
+                RotateToDirectionCamera();
+
+            CheckSlopeStatus();
             CheckGroundStatus();
 
-            if (!Grounded)
-                UpdateInTheAir();
+            if (Grounded && Jump)
+                JumpUp();
+
+            //if (!Grounded)
+                //UpdateInTheAir();
+
+            if (Input.anyKey)
+            {
+                Rigidbody.velocity = WalkDirection;
+            }
 
         }
 
@@ -93,17 +121,30 @@ namespace CharacterController.ThirdPerson
             transform.Rotate(0, m_TurnAmount * (turnSpeed * TurnSpeed) * Time.deltaTime, 0);
         }
 
+        void JumpUp()
+        {
+            Rigidbody.AddForce(Vector3.up * JumpForce, ForceMode.Impulse);
+        }
+
         void UpdateInTheAir()
         {
             Vector3 extraGravityForce = (Physics.gravity * GravityMultiplier) - Physics.gravity;
             Rigidbody.AddForce(extraGravityForce);
         }
 
+        void CheckSlopeStatus()
+        {
+            RaycastHit hitInfo;
+            Vector3 forward;
+            Physics.Raycast(this.transform.position, -Vector3.up, out hitInfo, 5);
+            //WalkDirection += Vector3.Cross(this.transform.right, hitInfo.normal);
+            forward = Vector3.Cross(this.transform.right, hitInfo.normal);
+            Debug.DrawLine(this.transform.position, this.transform.position + forward * 5, Color.red);
+        }
+
         void CheckGroundStatus()
         {
-            //Środek collidera
             Vector3 bottom = CapsuleCollider.bounds.center - (Vector3.up * CapsuleCollider.bounds.extents.y);
-            //Promień kuli
             Vector3 curve = bottom + (Vector3.up * CapsuleCollider.radius);
 #if RAY
             Debug.DrawRay(curve, -Vector3.up * DistanceRay, Color.blue);
