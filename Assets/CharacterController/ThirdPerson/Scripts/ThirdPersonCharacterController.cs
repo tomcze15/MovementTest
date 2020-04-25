@@ -24,9 +24,12 @@ namespace CharacterController.ThirdPerson
         [SerializeField] [Range(0.0f, 10.0f)] float thrust              = 1.0f;
         [SerializeField] [Range(0.0f, 10.0f)] float TurnSpeed           = 1.0f;
         [SerializeField] [Range(0.0f, 10.0f)] float SlowDownSpeed       = 1.0f;
-        [SerializeField] [Range(0.0f, 10.0f)] float GravityMultiplier   = 2.0f;
+        [SerializeField] [Range(0.1f, 2.0f)]  float GravityMultiplier   = 1.0f;
         [SerializeField] [Range(0.0f, 10.0f)] float JumpForce           = 2.0f;
-        [SerializeField] Vector3 WalkDirection = Vector3.zero;
+        [SerializeField] Vector3 WalkDirection  = Vector3.zero;
+        [SerializeField] Vector3 SlopeDirection = Vector3.zero;
+        [SerializeField] Vector3 extraGravityForce = Vector3.zero;
+        [SerializeField] float gravity;
 
         [Header("Compontents")]
         [SerializeField] Rigidbody Rigidbody;
@@ -43,7 +46,10 @@ namespace CharacterController.ThirdPerson
         private void FixedUpdate()
         {
             WalkDirection = Vector3.zero;
-            bool ControlForward = true;
+
+            // Rotation with direction of camera only just when player's moving forward. 
+            // Move forward have to be before other moves
+            bool ControlForward = false;
 
             if (MoveForward && MoveBack)
             {
@@ -55,6 +61,12 @@ namespace CharacterController.ThirdPerson
             {
                 Rigidbody.velocity = Vector3.zero;
                 return;
+            }
+
+            if (MoveForward)
+            {
+                WalkDirection += transform.forward * thrust * Input.GetAxis("Vertical");
+                ControlForward = true;
             }
 
             if (MoveLeft)
@@ -69,34 +81,36 @@ namespace CharacterController.ThirdPerson
                 ControlForward = false;
             }
 
-            if (MoveForward)
-            {
-                WalkDirection += transform.forward * thrust * Input.GetAxis("Vertical");
-            }
-
             if (MoveBack)
             {
                 WalkDirection += transform.forward * thrust * 0.5f * Input.GetAxis("Vertical");
                 ControlForward = false;
             }
 
-            if(ControlForward)
-                RotateToDirectionCamera();
+            if(ControlForward) RotateToDirectionCamera();
 
             CheckSlopeStatus();
-            CheckGroundStatus();
-
-            if (Grounded && Jump)
-                JumpUp();
-
-            //if (!Grounded)
-                //UpdateInTheAir();
+            //CheckGroundStatus();
 
             if (Input.anyKey)
             {
-                Rigidbody.velocity = WalkDirection;
+                if (SlopeDirection.y != 0)
+                {
+                    Rigidbody.velocity = SlopeDirection * thrust;
+                }
+                else 
+                {
+                    Rigidbody.velocity = WalkDirection;
+                }
             }
-
+    
+            //Duży problem z długością wykrywania uziemienia :/
+            if (!Grounded)
+            {
+                UpdateInTheAir();
+            }
+            else
+                gravity = 0f;
         }
 
         // Update is called once per frame
@@ -128,18 +142,23 @@ namespace CharacterController.ThirdPerson
 
         void UpdateInTheAir()
         {
-            Vector3 extraGravityForce = (Physics.gravity * GravityMultiplier) - Physics.gravity;
-            Rigidbody.AddForce(extraGravityForce);
+            ////extraGravityForce = (Physics.gravity * GravityMultiplier) - Physics.gravity;
+            //extraGravityForce = new Vector3(0, -5f ,0);
+            //Rigidbody.velocity += extraGravityForce;
+
+            gravity -= 9.8f * Time.deltaTime;
+            //WalkDirection = new Vector3(WalkDirection.x, gravity, WalkDirection.z);
+            Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, Rigidbody.velocity.y + gravity, Rigidbody.velocity.z);
         }
 
         void CheckSlopeStatus()
         {
             RaycastHit hitInfo;
-            Vector3 forward;
             Physics.Raycast(this.transform.position, -Vector3.up, out hitInfo, 5);
-            //WalkDirection += Vector3.Cross(this.transform.right, hitInfo.normal);
-            forward = Vector3.Cross(this.transform.right, hitInfo.normal);
-            Debug.DrawLine(this.transform.position, this.transform.position + forward * 5, Color.red);
+            SlopeDirection = Vector3.Cross(this.transform.right, hitInfo.normal);
+#if RAY
+            Debug.DrawLine(this.transform.position, this.transform.position + SlopeDirection * 5, Color.blue);
+#endif
         }
 
         void CheckGroundStatus()
@@ -147,7 +166,7 @@ namespace CharacterController.ThirdPerson
             Vector3 bottom = CapsuleCollider.bounds.center - (Vector3.up * CapsuleCollider.bounds.extents.y);
             Vector3 curve = bottom + (Vector3.up * CapsuleCollider.radius);
 #if RAY
-            Debug.DrawRay(curve, -Vector3.up * DistanceRay, Color.blue);
+            Debug.DrawRay(curve, -Vector3.up * DistanceRay, Color.red);
 #endif
             RaycastHit hit;
 
