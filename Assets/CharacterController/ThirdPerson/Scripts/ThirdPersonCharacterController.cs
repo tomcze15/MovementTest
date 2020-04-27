@@ -2,7 +2,7 @@
 
 #if     UNITY_EDITOR
 #define MOVEMENT
-#define RIGIDBODY
+//#define RIGIDBODY
 #define RAY
 #endif
 
@@ -21,26 +21,27 @@ namespace CharacterController.ThirdPerson
         [SerializeField] bool Grounded;
 
         [Header("MovementValue")]
-        [SerializeField] [Range(0.0f, 10.0f)] float thrust              = 1.0f;
-        [SerializeField] [Range(0.0f, 10.0f)] float TurnSpeed           = 1.0f;
-        [SerializeField] [Range(0.0f, 10.0f)] float SlowDownSpeed       = 1.0f;
-        [SerializeField] [Range(0.1f, 2.0f)]  float GravityMultiplier   = 1.0f;
-        [SerializeField] [Range(0.0f, 10.0f)] float JumpForce           = 2.0f;
-        [SerializeField] Vector3 WalkDirection  = Vector3.zero;
+        [SerializeField] [Range(0.0f, 10.0f)] float Speed = 1.0f;
+        [SerializeField] [Range(0.0f, 10.0f)] float TurnSpeed = 1.0f;
+        //[SerializeField] [Range(0.0f, 10.0f)] float SlowDownSpeed       = 1.0f;
+        //[SerializeField] [Range(0.1f, 2.0f)]  float GravityMultiplier   = 1.0f;
+        //[SerializeField] [Range(0.0f, 10.0f)] float JumpForce           = 2.0f;
+        [SerializeField] Vector3 WalkDirection = Vector3.zero;
         [SerializeField] Vector3 SlopeDirection = Vector3.zero;
-        [SerializeField] Vector3 extraGravityForce = Vector3.zero;
-        [SerializeField] float gravity;
+        [SerializeField] float Gravity;
+        [SerializeField] float AngleSlope;
+        [SerializeField] [Range(0.0f, 3.0f)] float DistanceRay = 1.0f;
 
         [Header("Compontents")]
         [SerializeField] Rigidbody Rigidbody;
         [SerializeField] CapsuleCollider CapsuleCollider;
-        [SerializeField] [Range(0.0f, 3.0f)] float DistanceRay = 1.0f;
+
 
         // Start is called before the first frame update
         void Start()
         {
-            if (Rigidbody       == null) Rigidbody          = GetComponent<Rigidbody>();
-            if (CapsuleCollider == null) CapsuleCollider    = GetComponent<CapsuleCollider>();
+            if (Rigidbody == null) Rigidbody = GetComponent<Rigidbody>();
+            if (CapsuleCollider == null) CapsuleCollider = GetComponent<CapsuleCollider>();
         }
 
         private void FixedUpdate()
@@ -65,58 +66,68 @@ namespace CharacterController.ThirdPerson
 
             if (MoveForward)
             {
-                WalkDirection += transform.forward * thrust * Input.GetAxis("Vertical");
+                WalkDirection += transform.forward * Speed * Input.GetAxis("Vertical");
                 ControlForward = true;
             }
 
             if (MoveLeft)
             {
-                WalkDirection += transform.right * thrust * 0.5f * Input.GetAxis("Horizontal");
+                WalkDirection += transform.right * Speed * 0.5f * Input.GetAxis("Horizontal");
                 ControlForward = false;
             }
 
             if (MoveRight)
             {
-                WalkDirection += transform.right * thrust * 0.5f * Input.GetAxis("Horizontal");
+                WalkDirection += transform.right * Speed * 0.5f * Input.GetAxis("Horizontal");
                 ControlForward = false;
             }
 
             if (MoveBack)
             {
-                WalkDirection += transform.forward * thrust * 0.5f * Input.GetAxis("Vertical");
+                WalkDirection += transform.forward * Speed * 0.5f * Input.GetAxis("Vertical");
                 ControlForward = false;
             }
 
-            if(ControlForward) RotateToDirectionCamera();
+            if (ControlForward) RotateToDirectionCamera();
 
             CheckSlopeStatus();
             //CheckGroundStatus();
 
-            if (Input.anyKey)
+
+
+            // Cała do przebudowy, gdyż ten kod jest tylko do testów ruchu na rampie/pochylni.
+            //
+            // Main move
+            if (MoveForward || MoveBack || MoveLeft || MoveRight)
             {
                 if (SlopeDirection.y != 0)
                 {
-                    Rigidbody.velocity = SlopeDirection * thrust;
+                    Rigidbody.velocity = SlopeDirection * Speed;
                 }
-                else 
+                else
                 {
                     Rigidbody.velocity = WalkDirection;
                 }
             }
-    
+            else // Lekko się porusza postać w dół, ale to chyba wynika z samej grawitacji w grze i masie którą posiada.
+                 // Ma mała masę, więc siła przyciągania jest mniejsza.
+            {
+                if(Grounded) Rigidbody.velocity = Vector3.zero;
+            }
+
             //Duży problem z długością wykrywania uziemienia :/
-            if (!Grounded)
+            if (!Grounded && (MoveForward || MoveBack || MoveLeft || MoveRight))
             {
                 UpdateInTheAir();
             }
-            else
-                gravity = 0f;
+            else // Jeżeli wylądujesz zresetuj siłę grawitacji, aby liczyć do nowa, gdy straci podłoże
+                Gravity = 0f;
         }
 
         // Update is called once per frame
         void Update()
         {
-            CheckGroundStatus();
+            CheckGroundStatus(); // To bym dał do fixedUpdate!!!
 #if UNITY_EDITOR
             DebugInfo();
 #endif
@@ -124,31 +135,26 @@ namespace CharacterController.ThirdPerson
 
         public void RotateToDirectionCamera()
         {
-            Vector3 m_Move = Vector3.Scale(Camera.main.transform.forward, new Vector3(1, 0, 1)).normalized;
+            Vector3 move = Vector3.Scale(Camera.main.transform.forward, new Vector3(1, 0, 1)).normalized;
 
-            if (m_Move.magnitude > 1f) m_Move.Normalize();
+            if (move.magnitude > 1f) move.Normalize();
 
-            m_Move = transform.InverseTransformDirection(m_Move);
-            float m_TurnAmount = Mathf.Atan2(m_Move.x, m_Move.z);
-            float m_ForwardAmount = m_Move.z;
-            float turnSpeed = Mathf.Lerp(180, 360, m_ForwardAmount);
-            transform.Rotate(0, m_TurnAmount * (turnSpeed * TurnSpeed) * Time.deltaTime, 0);
+            move = transform.InverseTransformDirection(move);
+            float turnAmount = Mathf.Atan2(move.x, move.z);
+            float forwardAmount = move.z;
+            float turnSpeed = Mathf.Lerp(180, 360, forwardAmount);
+            transform.Rotate(0, turnAmount * (turnSpeed * TurnSpeed) * Time.deltaTime, 0);
         }
 
-        void JumpUp()
-        {
-            Rigidbody.AddForce(Vector3.up * JumpForce, ForceMode.Impulse);
-        }
+        //void JumpUp()
+        //{
+        //    Rigidbody.AddForce(Vector3.up * JumpForce, ForceMode.Impulse);
+        //}
 
         void UpdateInTheAir()
         {
-            ////extraGravityForce = (Physics.gravity * GravityMultiplier) - Physics.gravity;
-            //extraGravityForce = new Vector3(0, -5f ,0);
-            //Rigidbody.velocity += extraGravityForce;
-
-            gravity -= 9.8f * Time.deltaTime;
-            //WalkDirection = new Vector3(WalkDirection.x, gravity, WalkDirection.z);
-            Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, Rigidbody.velocity.y + gravity, Rigidbody.velocity.z);
+            Gravity += Physics.gravity.y * Time.deltaTime; //Gravity -= 9.8f * Time.deltaTime;
+            Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, Rigidbody.velocity.y + Gravity, Rigidbody.velocity.z);
         }
 
         void CheckSlopeStatus()
@@ -156,6 +162,9 @@ namespace CharacterController.ThirdPerson
             RaycastHit hitInfo;
             Physics.Raycast(this.transform.position, -Vector3.up, out hitInfo, 5);
             SlopeDirection = Vector3.Cross(this.transform.right, hitInfo.normal);
+
+            // Road inclination angle
+            AngleSlope = Vector3.Angle(-Vector3.up, SlopeDirection);
 #if RAY
             Debug.DrawLine(this.transform.position, this.transform.position + SlopeDirection * 5, Color.blue);
 #endif
@@ -185,10 +194,10 @@ namespace CharacterController.ThirdPerson
             Debug.Log("Velocity: " + Rigidbody.velocity);
 #endif
 #if MOVEMENT
-            if (MoveLeft)       Debug.Log("Move Left"   );
-            if (MoveRight)      Debug.Log("Move Right"  );
-            if (MoveForward)    Debug.Log("Move Forward");
-            if (MoveBack)       Debug.Log("Move Back"   );
+            if (MoveLeft) Debug.Log("Move Left");
+            if (MoveRight) Debug.Log("Move Right");
+            if (MoveForward) Debug.Log("Move Forward");
+            if (MoveBack) Debug.Log("Move Back");
 #endif
         }
     }
