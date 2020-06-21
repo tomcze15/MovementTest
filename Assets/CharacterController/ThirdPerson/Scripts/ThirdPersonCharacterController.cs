@@ -1,7 +1,7 @@
 ﻿#define UNITY_EDITOR
 
 #if     UNITY_EDITOR
-#define MOVEMENT
+//#define MOVEMENT
 //#define RIGIDBODY
 #define RAY
 #endif
@@ -13,36 +13,64 @@ namespace CharacterController.ThirdPerson
 {
     public class ThirdPersonCharacterController : MonoBehaviour
     {
-        [Header("Movement")]
-        public bool MoveForward;
-        public bool MoveBack;
-        public bool MoveLeft;
-        public bool MoveRight;
-        public bool Jump;
-        [SerializeField] bool Grounded;
+        [Serializable]
+        public class MovementSettings
+        {
+            public KeyCode          RunKey;
+            public AnimationCurve   RunTransitionCurve;
+            public AnimationCurve   JumpCurve;
+            public AnimationCurve   SlopeCurveModifier;
 
-        [Header("MovementValue")]
-        [SerializeField] [Range(0.0f, 10.0f)] float Speed = 1.0f;
-        [SerializeField] [Range(0.0f, 10.0f)] float TurnSpeed = 1.0f;
-        [SerializeField] float Gravity;
-        [SerializeField] float AngleSlope;
-        [SerializeField] [Range(0.0f, 3.0f)] float DistanceRay = 1.0f;
+            public float Speed;
+            public float RunMultiplier;
+            [Range(0.0f, 10.0f)] public float TurnSpeed;
+
+            [Header("Movement")]
+            public bool MoveForward;
+            public bool MoveBack;
+            public bool MoveLeft;
+            public bool MoveRight;
+            public bool Jump;
+            public bool Run;
+            public bool Grounded;
+
+            public MovementSettings()
+            {
+                Speed = 4f;
+                RunMultiplier = 2f;
+                TurnSpeed = 1f;
+                RunKey = KeyCode.LeftShift;
+                SlopeCurveModifier = new AnimationCurve(new Keyframe(-90.0f, 1.0f), new Keyframe(0.0f, 1.0f), new Keyframe(90.0f, 0.0f));
+            }
+        }
+
+        [Serializable]
+        public class AdvancedSettings
+        {
+            public float Gravity;
+            public float AngleSlope;
+            public float DistanceRayInTheAir;
+            public float DistanceRayOnTheGround;
+            public float CurrentDistanceRay;
+
+            public AdvancedSettings()
+            {
+                DistanceRayInTheAir = 0.41f;
+                DistanceRayOnTheGround = 0.8f;
+                CurrentDistanceRay = DistanceRayOnTheGround;
+                Gravity = 4f;
+            }
+        }
+
+        public MovementSettings movementSettings = new MovementSettings();
+        public AdvancedSettings advancedSettings = new AdvancedSettings();
+        
         [SerializeField] Vector3 WalkDirection = Vector3.zero;
         [SerializeField] Vector3 SlopeDirection = Vector3.zero;
-        [SerializeField] AnimationCurve JumpCurve;
-        //[SerializeField] [Range(0.0f, 10.0f)] float SlowDownSpeed       = 1.0f;
-        //[SerializeField] [Range(0.1f, 2.0f)]  float GravityMultiplier   = 1.0f;
-        //[SerializeField] [Range(0.0f, 10.0f)] float JumpForce           = 2.0f;
 
         [Header("Compontents")]
         [SerializeField] Rigidbody Rigidbody;
         [SerializeField] CapsuleCollider CapsuleCollider;
-
-
-        // Nie wiem co zrobić by ustalało minimum distance ray... czy prosić użytkownika czy samemu jakoś liczyć :P
-        // Item1 - normal distance ray
-        // Item2 - distance ray during jump
-        Tuple<float, float> _distanceRay = new Tuple<float, float>(0.8f, 0.41f);
 
         // Start is called before the first frame update
         private void Start()
@@ -52,41 +80,39 @@ namespace CharacterController.ThirdPerson
         }
 
         private void FixedUpdate()
-        {
-            Move();
+        { 
+            CheckGroundStatus();
             CheckSlopeStatus();
-            //CheckGroundStatus();
+            UpdateWalkDirection();
 
-            // Cała do przebudowy, gdyż ten kod jest tylko do testów ruchu na rampie/pochylni.
-            // Main move
-            if (MoveForward || MoveBack || MoveLeft || MoveRight)
-            {
-                if (SlopeDirection.y != 0)
-                {
-                    if(!MoveBack)
-                        Rigidbody.velocity = SlopeDirection * Speed;
-                    else
-                        Rigidbody.velocity = -SlopeDirection * Speed;
-                }
-                else
-                {
-                    Rigidbody.velocity = WalkDirection;
-                }
-            }
-            else // Lekko się porusza postać w dół, ale to chyba wynika z samej grawitacji w grze i masie którą posiada.
-                 // Ma mała masę, więc siła przyciągania jest mniejsza.
-            {
-                if(Grounded) Rigidbody.velocity = Vector3.zero;
-            }
+            Move();
 
-            //Duży problem z długością wykrywania uziemienia :/
-            if (!Grounded && (MoveForward || MoveBack || MoveLeft || MoveRight))
+            if (movementSettings.MoveForward)
+                RotateToDirectionCamera();
+
+            if (!movementSettings.Grounded /*&& (movementSettings.MoveForward || movementSettings.MoveBack || movementSettings.MoveLeft || movementSettings.MoveRight)*/)
             {
                 UpdateInTheAir();
             }
-            else // Jeżeli wylądujesz zresetuj siłę grawitacji, aby liczyć od nowa, gdy straci podłoże
-                Gravity = 0f;
+            else // ?? If you land, reset the force of gravity to count again when it loses ground ??
+                advancedSettings.Gravity = 0f;
         }
+
+
+        private void Move()
+        {
+            if (movementSettings.MoveForward)
+            {
+                Rigidbody.velocity = WalkDirection * SlopeMultiplier();
+            }
+            else 
+            { 
+                if (movementSettings.Grounded) 
+                    Rigidbody.velocity = Vector3.zero;
+            }
+        }
+
+
 
         private void RotateToDirectionCamera()
         {
@@ -98,7 +124,7 @@ namespace CharacterController.ThirdPerson
             float turnAmount = Mathf.Atan2(move.x, move.z);
             float forwardAmount = move.z;
             float turnSpeed = Mathf.Lerp(180, 360, forwardAmount);
-            transform.Rotate(0, turnAmount * (turnSpeed * TurnSpeed) * Time.deltaTime, 0);
+            transform.Rotate(0, turnAmount * (turnSpeed * movementSettings.TurnSpeed) * Time.deltaTime, 0);
         }
 
         // Update is called once per frame
@@ -117,10 +143,13 @@ namespace CharacterController.ThirdPerson
 
         private void UpdateInTheAir()
         {
-            Gravity += Physics.gravity.y * Time.deltaTime; //Gravity -= 9.8f * Time.deltaTime;
-            Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, Rigidbody.velocity.y + Gravity, Rigidbody.velocity.z);
+            advancedSettings.Gravity += Physics.gravity.y * Time.deltaTime; //Gravity -= 9.8f * Time.deltaTime;
+            Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, Rigidbody.velocity.y + advancedSettings.Gravity, Rigidbody.velocity.z);
         }
 
+        /// <summary>
+        /// I check the slope of the road and measure the angle of inclination.
+        /// </summary>
         private void CheckSlopeStatus()
         {
             RaycastHit hitInfo;
@@ -132,29 +161,35 @@ namespace CharacterController.ThirdPerson
             SlopeDirection = Vector3.Cross(this.transform.right, hitInfo.normal);
 
             // Road inclination angle
-            AngleSlope = Vector3.Angle(-Vector3.up, SlopeDirection);
+            advancedSettings.AngleSlope = Vector3.Angle(-Vector3.up, SlopeDirection);
 #if RAY
             Debug.DrawLine(start, start + SlopeDirection * 5, Color.blue);
 #endif
         }
 
+        private float SlopeMultiplier()
+            => movementSettings.SlopeCurveModifier.Evaluate(advancedSettings.AngleSlope);
+
+        /// <summary>
+        /// I check if the character touches the ground
+        /// </summary>
         private void CheckGroundStatus()
         {
             Vector3 bottom = CapsuleCollider.bounds.center - (Vector3.up * CapsuleCollider.bounds.extents.y);
             Vector3 curve = bottom + (Vector3.up * CapsuleCollider.radius);
 #if RAY
-            Debug.DrawRay(curve, -Vector3.up * DistanceRay, Color.red);
+            Debug.DrawRay(curve, -Vector3.up * advancedSettings.CurrentDistanceRay, Color.red);
 #endif
             RaycastHit hit;
 
-            if (Physics.Raycast(curve, -Vector3.up, out hit, DistanceRay))
+            if (Physics.Raycast(curve, -Vector3.up, out hit, advancedSettings.CurrentDistanceRay))
             {
-                Grounded = true;
-                DistanceRay = _distanceRay.Item1;
+                movementSettings.Grounded = true;
+                advancedSettings.CurrentDistanceRay = advancedSettings.DistanceRayOnTheGround;
                 return;
             }
-            DistanceRay = _distanceRay.Item2;
-            Grounded = false;
+            advancedSettings.CurrentDistanceRay = advancedSettings.DistanceRayInTheAir;
+            movementSettings.Grounded = false;
             return;
         }
 
@@ -171,52 +206,28 @@ namespace CharacterController.ThirdPerson
 #endif
         }
 
-        private void Move()
+        private void UpdateWalkDirection()
         {
-            WalkDirection = Vector3.zero;
+            // Set current direction
+            WalkDirection = SlopeDirection;
+
+            // Reset direction
+            if (movementSettings.MoveForward && movementSettings.MoveBack || movementSettings.MoveLeft && movementSettings.MoveRight)
+            {
+                WalkDirection = Vector3.zero;
+                return;
+            }
 
             // Rotation with direction of camera only just when player's moving forward. 
             // Move forward have to be before other moves
             bool ControlForward = false;
 
-            if (MoveForward && MoveBack)
+            if (movementSettings.MoveForward)
             {
-                Rigidbody.velocity = Vector3.zero;
+                WalkDirection *= movementSettings.Speed * Input.GetAxis("Vertical");
+
                 return;
             }
-
-            if (MoveLeft && MoveRight)
-            {
-                Rigidbody.velocity = Vector3.zero;
-                return;
-            }
-
-            if (MoveForward)
-            {
-                WalkDirection += transform.forward * Speed * Input.GetAxis("Vertical");
-                ControlForward = true;
-            }
-
-            if (MoveLeft)
-            {
-                WalkDirection += transform.right * Speed * 0.5f * Input.GetAxis("Horizontal");
-                ControlForward = false;
-            }
-
-            if (MoveRight)
-            {
-                WalkDirection += transform.right * Speed * 0.5f * Input.GetAxis("Horizontal");
-                ControlForward = false;
-            }
-
-            if (MoveBack)
-            {
-                WalkDirection += transform.forward * Speed * 0.5f * Input.GetAxis("Vertical");
-
-                ControlForward = false;
-            }
-
-            if (ControlForward) RotateToDirectionCamera();
         }
     }
 }

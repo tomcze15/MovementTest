@@ -11,7 +11,6 @@ namespace MovementTest.ManagerInput
             if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
             {
                 VirtualInputManager.Instance.Forward = true;
-                VirtualInputManager.Instance.Any = true;
 #if Debug
                 Debug.Log("Forward.");
 #endif
@@ -24,7 +23,6 @@ namespace MovementTest.ManagerInput
             if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
             {
                 VirtualInputManager.Instance.Back = true;
-                VirtualInputManager.Instance.Any = true;
 #if Debug
                 Debug.Log("Back.");
 #endif
@@ -37,7 +35,6 @@ namespace MovementTest.ManagerInput
             if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
             {
                 VirtualInputManager.Instance.Left = true;
-                VirtualInputManager.Instance.Any = true;
 #if Debug
                 Debug.Log("Left.");
 #endif
@@ -50,7 +47,6 @@ namespace MovementTest.ManagerInput
             if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
             {
                 VirtualInputManager.Instance.Right = true;
-                VirtualInputManager.Instance.Any = true;
 #if Debug
                 Debug.Log("Right.");
 #endif
@@ -63,7 +59,6 @@ namespace MovementTest.ManagerInput
             if (Input.GetKey(KeyCode.Space))
             {
                 VirtualInputManager.Instance.Jump = true;
-                VirtualInputManager.Instance.Any = true;
 #if Debug
                 Debug.Log("Space.");
 #endif
@@ -76,7 +71,6 @@ namespace MovementTest.ManagerInput
             if (Input.GetKey(KeyCode.Q))
             {
                 VirtualInputManager.Instance.TurnLeft = true;
-                VirtualInputManager.Instance.Any = true;
 #if Debug
                 Debug.Log("Q.");
 #endif
@@ -89,7 +83,6 @@ namespace MovementTest.ManagerInput
             if (Input.GetKey(KeyCode.E))
             {
                 VirtualInputManager.Instance.TurnRight = true;
-                VirtualInputManager.Instance.Any = true;
 #if Debug
                 Debug.Log("E.");
 #endif
@@ -99,7 +92,17 @@ namespace MovementTest.ManagerInput
                 VirtualInputManager.Instance.TurnRight = false;
             }
 
-            //if (Input.anyKey) ;
+            if (Input.GetKey(KeyCode.LeftShift))
+            {
+                VirtualInputManager.Instance.Run = true;
+#if Debug
+                Debug.Log("LeftShift.");
+#endif
+            }
+            else
+            {
+                VirtualInputManager.Instance.Run = false;
+            }
         }
     }
 }
