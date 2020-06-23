@@ -103,6 +103,18 @@ namespace MovementTest.ManagerInput
             {
                 VirtualInputManager.Instance.Run = false;
             }
+
+//            if (Input.anyKey)
+//            {
+//                VirtualInputManager.Instance.Any = true;
+//#if Debug
+//                Debug.Log("Any.");
+//#endif
+//            }
+//            else
+//            {
+//                VirtualInputManager.Instance.Any = false;
+//            }
         }
     }
 }

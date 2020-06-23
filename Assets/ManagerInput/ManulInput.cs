@@ -39,6 +39,9 @@ namespace MovementTest.ManagerInput
 
             if (VirtualInputManager.Instance.Run) CharacterController.movementSettings.Run = true;
             else CharacterController.movementSettings.Run = false;
+
+            //if (VirtualInputManager.Instance.Any) CharacterController.movementSettings.Any = true;
+            //else CharacterController.movementSettings.Any = false;
         }
     }
 }

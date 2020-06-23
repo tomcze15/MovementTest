@@ -12,5 +12,6 @@ namespace MovementTest.ManagerInput
         public bool Jump;
         public bool TurnLeft;
         public bool TurnRight;
+        //public bool Any;
     }
 }

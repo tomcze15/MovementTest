@@ -2,6 +2,9 @@
 
 public class GameManager : MonoBehaviour
 {
+    public float V;
+    public float H;
+
     private void Start()
     {
         Cursor.visible = false;
@@ -12,5 +15,8 @@ public class GameManager : MonoBehaviour
     {
         if (Input.GetKey(KeyCode.Escape))   Application.Quit();
         if (Input.GetKey(KeyCode.Q))        Debug.Break();
+
+        V = Input.GetAxis("Vertical");
+        H = Input.GetAxis("Horizontal");
     }
 }

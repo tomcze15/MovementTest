@@ -7,6 +7,7 @@
 #endif
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace CharacterController.ThirdPerson
@@ -16,13 +17,15 @@ namespace CharacterController.ThirdPerson
         [Serializable]
         public class MovementSettings
         {
-            public KeyCode          RunKey;
-            public AnimationCurve   RunTransitionCurve;
-            public AnimationCurve   JumpCurve;
-            public AnimationCurve   SlopeCurveModifier;
-
+            //public AnimationCurve   RunTransitionCurve;
+            //public AnimationCurve   JumpCurve;
+            public AnimationCurve   SlopeCurveModifier;         
             public float Speed;
             public float RunMultiplier;
+            public float BackMultiplier;
+            public float SideMultiplier;
+            public float InTheAirMultiplier;
+            public float JumpForce;
             [Range(0.0f, 10.0f)] public float TurnSpeed;
 
             [Header("Movement")]
@@ -36,10 +39,13 @@ namespace CharacterController.ThirdPerson
 
             public MovementSettings()
             {
-                Speed = 4f;
-                RunMultiplier = 2f;
+                Speed = 9f;
+                JumpForce = 5f;
+                RunMultiplier = 1.3f;
+                BackMultiplier = 0.6f;
+                SideMultiplier = 0.8f;
+                InTheAirMultiplier = 0.5f;
                 TurnSpeed = 1f;
-                RunKey = KeyCode.LeftShift;
                 SlopeCurveModifier = new AnimationCurve(new Keyframe(-90.0f, 1.0f), new Keyframe(0.0f, 1.0f), new Keyframe(90.0f, 0.0f));
             }
         }
@@ -55,7 +61,7 @@ namespace CharacterController.ThirdPerson
 
             public AdvancedSettings()
             {
-                DistanceRayInTheAir = 0.41f;
+                DistanceRayInTheAir = 0.8f;
                 DistanceRayOnTheGround = 0.8f;
                 CurrentDistanceRay = DistanceRayOnTheGround;
                 Gravity = 4f;
@@ -64,55 +70,81 @@ namespace CharacterController.ThirdPerson
 
         public MovementSettings movementSettings = new MovementSettings();
         public AdvancedSettings advancedSettings = new AdvancedSettings();
-        
-        [SerializeField] Vector3 WalkDirection = Vector3.zero;
-        [SerializeField] Vector3 SlopeDirection = Vector3.zero;
+        public GameObject ColliderEdgePrefab;
+        public GameObject GroundCheck;
+        public LayerMask groundMask;
+
+        private Vector3 _bottom;
+        private Vector3 _curve;
+
+        [SerializeField] Vector3 WalkDirection;
+        [SerializeField] Vector3 SlopeDirection;
+        [SerializeField] Vector3 CurrentVelocity;
+        [SerializeField] List<GameObject> GroundEdgeList;
 
         [Header("Compontents")]
         [SerializeField] Rigidbody Rigidbody;
         [SerializeField] CapsuleCollider CapsuleCollider;
 
         // Start is called before the first frame update
+        private void Awake()
+        {
+            WalkDirection = Vector3.zero;
+            SlopeDirection = Vector3.zero;
+            if (Rigidbody       == null)    Rigidbody       = GetComponent< Rigidbody        >();
+            if (CapsuleCollider == null)    CapsuleCollider = GetComponent< CapsuleCollider  >();
+        }
+
         private void Start()
         {
-            if (Rigidbody == null) Rigidbody = GetComponent<Rigidbody>();
-            if (CapsuleCollider == null) CapsuleCollider = GetComponent<CapsuleCollider>();
+            _bottom = CapsuleCollider.bounds.center - (Vector3.up * CapsuleCollider.bounds.extents.y);
+            _curve = _bottom + (Vector3.up * CapsuleCollider.radius);
+            CreateEdgeObjects();
         }
 
         private void FixedUpdate()
-        { 
+        {
+            //CheckGroundStatus2();
             CheckGroundStatus();
-            CheckSlopeStatus();
+
+            if (movementSettings.Grounded && Rigidbody.velocity.y < 0)
+            {
+                Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, 0, Rigidbody.velocity.z);
+            }
+
+            //UpdateWalkDirection();
+
+            //Move();
+
+            if (movementSettings.MoveForward)
+                if(movementSettings.MoveLeft == false && movementSettings.MoveRight == false && movementSettings.MoveBack == false)
+                    RotateToDirectionCamera();
+
+            ApplyGravity();
+
             UpdateWalkDirection();
 
             Move();
 
-            if (movementSettings.MoveForward)
-                RotateToDirectionCamera();
-
-            if (!movementSettings.Grounded /*&& (movementSettings.MoveForward || movementSettings.MoveBack || movementSettings.MoveLeft || movementSettings.MoveRight)*/)
-            {
-                UpdateInTheAir();
-            }
-            else // ?? If you land, reset the force of gravity to count again when it loses ground ??
-                advancedSettings.Gravity = 0f;
+            CurrentVelocity = Rigidbody.velocity;
         }
-
 
         private void Move()
         {
-            if (movementSettings.MoveForward)
+            if (movementSettings.MoveForward || movementSettings.MoveBack || movementSettings.MoveLeft || movementSettings.MoveRight)
             {
-                Rigidbody.velocity = WalkDirection * SlopeMultiplier();
+                Rigidbody.velocity = WalkDirection/* * SlopeMultiplier()*/;
             }
-            else 
-            { 
-                if (movementSettings.Grounded) 
-                    Rigidbody.velocity = Vector3.zero;
-            }
+            //else if (movementSettings.Grounded)
+            //{
+            //    Rigidbody.velocity = Vector3.zero;
+            //}
         }
 
-
+        private void ApplyGravity()
+        {
+            Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, Rigidbody.velocity.y + advancedSettings.Gravity * Time.deltaTime, Rigidbody.velocity.z);
+        }
 
         private void RotateToDirectionCamera()
         {
@@ -130,22 +162,21 @@ namespace CharacterController.ThirdPerson
         // Update is called once per frame
         private void Update()
         {
-            CheckGroundStatus();
 #if UNITY_EDITOR
             DebugInfo();
 #endif
         }
 
-        //void JumpUp()
-        //{
-        //    Rigidbody.AddForce(Vector3.up * JumpForce, ForceMode.Impulse);
-        //}
-
-        private void UpdateInTheAir()
+        private void JumpUp()
         {
-            advancedSettings.Gravity += Physics.gravity.y * Time.deltaTime; //Gravity -= 9.8f * Time.deltaTime;
-            Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, Rigidbody.velocity.y + advancedSettings.Gravity, Rigidbody.velocity.z);
+            Rigidbody.AddForce(new Vector3(0, 5, 0) * movementSettings.JumpForce, ForceMode.Impulse);
         }
+
+        //private void UpdateInTheAir()
+        //{
+        //    advancedSettings.Gravity += Physics.gravity.y * Time.deltaTime;
+        //    Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, advancedSettings.Gravity, Rigidbody.velocity.z);
+        //}
 
         /// <summary>
         /// I check the slope of the road and measure the angle of inclination.
@@ -167,31 +198,106 @@ namespace CharacterController.ThirdPerson
 #endif
         }
 
-        private float SlopeMultiplier()
-            => movementSettings.SlopeCurveModifier.Evaluate(advancedSettings.AngleSlope);
+        private void CheckGroundStatus2() => 
+            movementSettings.Grounded = Physics.CheckSphere(GroundCheck.transform.position, 0.45f, groundMask);
 
-        /// <summary>
-        /// I check if the character touches the ground
-        /// </summary>
+        private void OnDrawGizmosSelected()
+        {
+#if RAY
+            Gizmos.color = Color.blue;
+            Gizmos.DrawWireSphere(_curve, CapsuleCollider.radius);
+#endif
+        }
+
         private void CheckGroundStatus()
         {
             Vector3 bottom = CapsuleCollider.bounds.center - (Vector3.up * CapsuleCollider.bounds.extents.y);
             Vector3 curve = bottom + (Vector3.up * CapsuleCollider.radius);
 #if RAY
-            Debug.DrawRay(curve, -Vector3.up * advancedSettings.CurrentDistanceRay, Color.red);
+            foreach (GameObject obj in GroundEdgeList)
+                Debug.DrawRay(obj.transform.position, -Vector3.up * advancedSettings.CurrentDistanceRay, Color.red);
 #endif
             RaycastHit hit;
 
-            if (Physics.Raycast(curve, -Vector3.up, out hit, advancedSettings.CurrentDistanceRay))
+            foreach (GameObject obj in GroundEdgeList)
             {
-                movementSettings.Grounded = true;
-                advancedSettings.CurrentDistanceRay = advancedSettings.DistanceRayOnTheGround;
-                return;
+                if (Physics.Raycast(curve, -Vector3.up, out hit, advancedSettings.CurrentDistanceRay, groundMask))
+                {
+                    movementSettings.Grounded = true;
+                    advancedSettings.CurrentDistanceRay = advancedSettings.DistanceRayOnTheGround;
+                    return;
+                }
             }
+
             advancedSettings.CurrentDistanceRay = advancedSettings.DistanceRayInTheAir;
             movementSettings.Grounded = false;
             return;
         }
+
+        private void UpdateWalkDirection()
+        {
+            CheckSlopeStatus();
+
+            float currentSpeed = movementSettings.Speed;
+
+            WalkDirection = (this.transform.right * Input.GetAxis("Horizontal") + SlopeDirection * Input.GetAxis("Vertical"));
+
+            // Reset direction
+            if (movementSettings.MoveForward && movementSettings.MoveBack || movementSettings.MoveLeft && movementSettings.MoveRight)
+            {
+                WalkDirection = Vector3.zero;
+                return;
+            }
+
+            if (movementSettings.MoveForward)
+            {
+                if(movementSettings.Run)    currentSpeed  *= movementSettings.RunMultiplier;
+            }
+
+            if (movementSettings.MoveBack)
+            {
+                if (movementSettings.Run)   currentSpeed *= movementSettings.BackMultiplier * movementSettings.RunMultiplier;
+                else                        currentSpeed *= movementSettings.BackMultiplier;
+            }
+
+            if (movementSettings.MoveLeft || movementSettings.MoveRight)
+            {
+                if (movementSettings.Run)   currentSpeed *= movementSettings.SideMultiplier * movementSettings.RunMultiplier;
+                else                        currentSpeed *= movementSettings.SideMultiplier;
+            }
+
+            WalkDirection *= currentSpeed * SlopeMultiplier();
+        }
+
+        private float SlopeMultiplier()
+            => movementSettings.SlopeCurveModifier.Evaluate(advancedSettings.AngleSlope);
+
+        private double ConvertDegreesToRadians(double degrees) 
+            => ((Math.PI / 180) * degrees);
+
+        private void CreateEdgeObjects()
+        {
+            GameObject MiddleEdge = CreateEdgeSphere(_curve);
+            MiddleEdge.transform.parent = this.transform;
+            GroundEdgeList.Add(MiddleEdge);
+
+            float radiusOffset = -0.01f;
+            int part = 16, sector;
+
+            sector = 360 / part;
+
+            for (int i = 0; i < 360; i += sector)
+            {
+                double x = (_curve.x + (CapsuleCollider.radius + radiusOffset) * Math.Cos(ConvertDegreesToRadians((double)i)));
+                double z = (_curve.z + (CapsuleCollider.radius + radiusOffset) * Math.Sin(ConvertDegreesToRadians((double)i)));
+                var obj = CreateEdgeSphere(new Vector3((float)x, _curve.y, (float)z));
+                obj.transform.parent = this.transform;
+                GroundEdgeList.Add(obj);
+            }
+        }
+
+        private GameObject CreateEdgeSphere(Vector3 pos)
+            => Instantiate(ColliderEdgePrefab, pos, Quaternion.identity);
 
         private void DebugInfo()
         {
@@ -204,30 +310,6 @@ namespace CharacterController.ThirdPerson
             if (MoveForward) Debug.Log("Move Forward");
             if (MoveBack) Debug.Log("Move Back");
 #endif
-        }
-
-        private void UpdateWalkDirection()
-        {
-            // Set current direction
-            WalkDirection = SlopeDirection;
-
-            // Reset direction
-            if (movementSettings.MoveForward && movementSettings.MoveBack || movementSettings.MoveLeft && movementSettings.MoveRight)
-            {
-                WalkDirection = Vector3.zero;
-                return;
-            }
-
-            // Rotation with direction of camera only just when player's moving forward. 
-            // Move forward have to be before other moves
-            bool ControlForward = false;
-
-            if (movementSettings.MoveForward)
-            {
-                WalkDirection *= movementSettings.Speed * Input.GetAxis("Vertical");
-
-                return;
-            }
         }
     }
 }
