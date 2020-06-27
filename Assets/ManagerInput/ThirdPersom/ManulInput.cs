@@ -1,7 +1,7 @@
-﻿using UnityEngine;
-using CharacterController.ThirdPerson;
+﻿using ManagerInput;
+using UnityEngine;
 
-namespace MovementTest.ManagerInput
+namespace CharacterController.ThirdPerson.ManagerInput
 {
     public class ManulInput : MonoBehaviour
     {

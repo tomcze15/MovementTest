@@ -382,11 +382,44 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
+    JumpCurveModifier:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 2
+        outSlope: 2
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: -0.010939121
+        outSlope: -0.010939121
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 2
+        value: 0
+        inSlope: -2.0978966
+        outSlope: -2.0978966
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.024837017
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
     Speed: 10
     RunMultiplier: 2
     BackMultiplier: 0.6
     SideMultiplier: 0.8
-    JumpForce: 5
+    JumpForce: 150
     TurnSpeed: 2
     MoveForward: 0
     MoveBack: 0
@@ -399,7 +432,7 @@ MonoBehaviour:
     Gravity: -9.81
     GravityMultiplier: 1
     AngleSlope: 0
-    DistanceRayInTheAir: 0.45
+    DistanceRayInTheAir: 0.5
     DistanceRayOnTheGround: 0.8
     CurrentDistanceRay: 0.8
   ColliderEdgePrefab: {fileID: 6492605386973094979, guid: 0014294a5ced1654ba886efcb680e75e,
@@ -410,6 +443,7 @@ MonoBehaviour:
     m_Bits: 256
   WalkDirection: {x: 0, y: 0, z: 0}
   SlopeDirection: {x: 0, y: 0, z: 0}
+  CurrentVelocity: {x: 0, y: 0, z: 0}
   GroundEdgeList: []
   Rigidbody: {fileID: 66002653}
   CapsuleCollider: {fileID: 66002652}
@@ -850,8 +884,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 125445440}
-  m_LocalRotation: {x: 0.025022248, y: -0.8002885, z: 0.03347786, w: 0.5981568}
-  m_LocalPosition: {x: -30.109283, y: 5.9626617, z: -34.036907}
+  m_LocalRotation: {x: 0.04021205, y: -0.7991795, z: 0.053800687, w: 0.5973279}
+  m_LocalPosition: {x: -30.57296, y: 6.4551196, z: -34.173805}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -1290,7 +1324,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 189917644}
-  m_LocalRotation: {x: -0.06436422, y: 0.73260945, z: -0.1706224, w: -0.65576583}
+  m_LocalRotation: {x: -0.1307721, y: -0.71188146, z: 0.36716092, w: 0.5842228}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
@@ -1766,7 +1800,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 412589690}
-  m_LocalRotation: {x: -0.046701238, y: 0.75132865, z: -0.1453161, w: -0.64203393}
+  m_LocalRotation: {x: -0.15404724, y: -0.72600454, z: 0.33837804, w: 0.57852155}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
@@ -2053,7 +2087,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BindingMode: 5
-  m_FollowOffset: {x: 0, y: 4.9626617, z: -11.876818}
+  m_FollowOffset: {x: 0, y: 5.4551196, z: -11.393354}
   m_XDamping: 1
   m_YDamping: 1
   m_ZDamping: 1
@@ -5962,7 +5996,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BindingMode: 5
-  m_FollowOffset: {x: 0, y: 4.9626617, z: -11.876818}
+  m_FollowOffset: {x: 0, y: 5.4551196, z: -11.393354}
   m_XDamping: 1
   m_YDamping: 1
   m_ZDamping: 1
@@ -8149,7 +8183,7 @@ Mesh:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: pb_Mesh14998
+  m_Name: pb_Mesh15002
   serializedVersion: 10
   m_SubMeshes:
   - serializedVersion: 2
@@ -8485,6 +8519,12 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
+    JumpCurveModifier:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
     Speed: 1
     RunMultiplier: 2
     BackMultiplier: 0
@@ -8512,6 +8552,7 @@ MonoBehaviour:
     m_Bits: 0
   WalkDirection: {x: 0, y: 0, z: 0}
   SlopeDirection: {x: 0, y: 0, z: 0}
+  CurrentVelocity: {x: 0, y: 0, z: 0}
   GroundEdgeList: []
   Rigidbody: {fileID: 1426390145}
   CapsuleCollider: {fileID: 1426390140}
@@ -9391,7 +9432,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1647993906}
-  m_LocalRotation: {x: -0.0479732, y: 0.7647616, z: -0.11198585, w: -0.6326907}
+  m_LocalRotation: {x: -0.17215505, y: -0.7362818, z: 0.3153909, w: 0.5733937}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
@@ -9668,7 +9709,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BindingMode: 5
-  m_FollowOffset: {x: 0, y: 4.9626617, z: -11.876818}
+  m_FollowOffset: {x: 0, y: 5.4551196, z: -11.393354}
   m_XDamping: 1
   m_YDamping: 1
   m_ZDamping: 1
@@ -11515,7 +11556,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1984105064}
   m_LocalRotation: {x: 0.3412, y: 0, z: 0, w: 0.93999076}
-  m_LocalPosition: {x: -30.109283, y: 5.9626617, z: -34.036907}
+  m_LocalPosition: {x: -30.57296, y: 6.4551196, z: -34.173805}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 412589692}
@@ -11560,7 +11601,7 @@ MonoBehaviour:
         m_Calls: []
   m_LegacyBlendHint: 0
   m_YAxis:
-    Value: 0.64
+    Value: 0.67
     m_SpeedMode: 0
     m_MaxSpeed: 2
     m_AccelTime: 0.2

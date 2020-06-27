@@ -1,7 +1,7 @@
 ﻿//#define Debug
 using UnityEngine;
 
-namespace MovementTest.ManagerInput
+namespace ManagerInput
 {
     public class KeyboardInput : MonoBehaviour
     {

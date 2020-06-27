@@ -5,7 +5,10 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/ThirdPersonController.unity
     guid: 9f303ae5a22a3bc438412d69d10ba519
+  - enabled: 1
+    path: Assets/Scenes/FirstPersonController.unity
+    guid: 297401bbe7365ad4194735b80e81eee8
   m_configObjects: {}

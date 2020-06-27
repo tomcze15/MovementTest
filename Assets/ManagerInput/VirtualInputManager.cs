@@ -1,6 +1,6 @@
 ﻿using MovementTest.GeneralScripts;
 
-namespace MovementTest.ManagerInput
+namespace ManagerInput
 {
     public class VirtualInputManager : Singleton<VirtualInputManager>
     {
