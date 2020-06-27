@@ -24,7 +24,7 @@ namespace CharacterController.ThirdPerson
             public float RunMultiplier;
             public float BackMultiplier;
             public float SideMultiplier;
-            public float InTheAirMultiplier;
+
             public float JumpForce;
             [Range(0.0f, 10.0f)] public float TurnSpeed;
 
@@ -44,7 +44,7 @@ namespace CharacterController.ThirdPerson
                 RunMultiplier = 1.3f;
                 BackMultiplier = 0.6f;
                 SideMultiplier = 0.8f;
-                InTheAirMultiplier = 0.5f;
+
                 TurnSpeed = 1f;
                 SlopeCurveModifier = new AnimationCurve(new Keyframe(-90.0f, 1.0f), new Keyframe(0.0f, 1.0f), new Keyframe(90.0f, 0.0f));
             }
@@ -54,32 +54,36 @@ namespace CharacterController.ThirdPerson
         public class AdvancedSettings
         {
             public float Gravity;
+            public float GravityMultiplier;
             public float AngleSlope;
             public float DistanceRayInTheAir;
             public float DistanceRayOnTheGround;
             public float CurrentDistanceRay;
 
+
             public AdvancedSettings()
             {
-                DistanceRayInTheAir = 0.8f;
+                DistanceRayInTheAir = 0.45f;
                 DistanceRayOnTheGround = 0.8f;
                 CurrentDistanceRay = DistanceRayOnTheGround;
-                Gravity = 4f;
+                Gravity = -9.81f;
+                GravityMultiplier = 1f;
             }
         }
 
         public MovementSettings movementSettings = new MovementSettings();
         public AdvancedSettings advancedSettings = new AdvancedSettings();
         public GameObject ColliderEdgePrefab;
-        public GameObject GroundCheck;
-        public LayerMask groundMask;
+
+        [SerializeField] GameObject GroundCheck;
+        [SerializeField] LayerMask groundMask;
 
         private Vector3 _bottom;
         private Vector3 _curve;
+        private float   _currentGravityForce;
 
         [SerializeField] Vector3 WalkDirection;
         [SerializeField] Vector3 SlopeDirection;
-        [SerializeField] Vector3 CurrentVelocity;
         [SerializeField] List<GameObject> GroundEdgeList;
 
         [Header("Compontents")]
@@ -104,46 +108,42 @@ namespace CharacterController.ThirdPerson
 
         private void FixedUpdate()
         {
-            //CheckGroundStatus2();
             CheckGroundStatus();
 
             if (movementSettings.Grounded && Rigidbody.velocity.y < 0)
-            {
                 Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, 0, Rigidbody.velocity.z);
-            }
-
-            //UpdateWalkDirection();
-
-            //Move();
 
             if (movementSettings.MoveForward)
                 if(movementSettings.MoveLeft == false && movementSettings.MoveRight == false && movementSettings.MoveBack == false)
                     RotateToDirectionCamera();
 
+            UpdateWalkDirection();
             ApplyGravity();
 
-            UpdateWalkDirection();
-
             Move();
-
-            CurrentVelocity = Rigidbody.velocity;
         }
 
         private void Move()
         {
             if (movementSettings.MoveForward || movementSettings.MoveBack || movementSettings.MoveLeft || movementSettings.MoveRight)
             {
-                Rigidbody.velocity = WalkDirection/* * SlopeMultiplier()*/;
+                if(movementSettings.Grounded)
+                    Rigidbody.velocity = WalkDirection;
+                else
+                    Rigidbody.velocity = new Vector3(WalkDirection.x, _currentGravityForce * advancedSettings.GravityMultiplier, WalkDirection.z);
             }
-            //else if (movementSettings.Grounded)
-            //{
-            //    Rigidbody.velocity = Vector3.zero;
-            //}
+            else
+            {
+                Rigidbody.velocity = new Vector3(WalkDirection.x, _currentGravityForce * advancedSettings.GravityMultiplier, WalkDirection.z);
+            }
         }
 
         private void ApplyGravity()
         {
-            Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, Rigidbody.velocity.y + advancedSettings.Gravity * Time.deltaTime, Rigidbody.velocity.z);
+            if (!movementSettings.Grounded)
+                _currentGravityForce += Physics.gravity.y * Time.deltaTime;
+            else
+                _currentGravityForce = 0;
         }
 
         private void RotateToDirectionCamera()
@@ -172,12 +172,6 @@ namespace CharacterController.ThirdPerson
             Rigidbody.AddForce(new Vector3(0, 5, 0) * movementSettings.JumpForce, ForceMode.Impulse);
         }
 
-        //private void UpdateInTheAir()
-        //{
-        //    advancedSettings.Gravity += Physics.gravity.y * Time.deltaTime;
-        //    Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, advancedSettings.Gravity, Rigidbody.velocity.z);
-        //}
-
         /// <summary>
         /// I check the slope of the road and measure the angle of inclination.
         /// </summary>
@@ -201,13 +195,13 @@ namespace CharacterController.ThirdPerson
         private void CheckGroundStatus2() => 
             movementSettings.Grounded = Physics.CheckSphere(GroundCheck.transform.position, 0.45f, groundMask);
 
-        private void OnDrawGizmosSelected()
+        /*private void OnDrawGizmosSelected()
         {
 #if RAY
             Gizmos.color = Color.blue;
             Gizmos.DrawWireSphere(_curve, CapsuleCollider.radius);
 #endif
-        }
+        }*/
 
         private void CheckGroundStatus()
         {
@@ -251,19 +245,24 @@ namespace CharacterController.ThirdPerson
 
             if (movementSettings.MoveForward)
             {
-                if(movementSettings.Run)    currentSpeed  *= movementSettings.RunMultiplier;
+                if (movementSettings.Run && movementSettings.Grounded)
+                    currentSpeed *= movementSettings.RunMultiplier;
             }
 
             if (movementSettings.MoveBack)
             {
-                if (movementSettings.Run)   currentSpeed *= movementSettings.BackMultiplier * movementSettings.RunMultiplier;
-                else                        currentSpeed *= movementSettings.BackMultiplier;
+                if (movementSettings.Run && movementSettings.Grounded)
+                    currentSpeed *= movementSettings.BackMultiplier * movementSettings.RunMultiplier;
+                else                        
+                    currentSpeed *= movementSettings.BackMultiplier;
             }
 
             if (movementSettings.MoveLeft || movementSettings.MoveRight)
             {
-                if (movementSettings.Run)   currentSpeed *= movementSettings.SideMultiplier * movementSettings.RunMultiplier;
-                else                        currentSpeed *= movementSettings.SideMultiplier;
+                if (movementSettings.Run && movementSettings.Grounded)
+                    currentSpeed *= movementSettings.SideMultiplier * movementSettings.RunMultiplier;
+                else                        
+                    currentSpeed *= movementSettings.SideMultiplier;
             }
 
             WalkDirection *= currentSpeed * SlopeMultiplier();
