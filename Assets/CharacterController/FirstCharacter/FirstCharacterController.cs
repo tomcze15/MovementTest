@@ -4,6 +4,7 @@
 #endif
 
 using System;
+using UnityEditor.UIElements;
 using UnityEngine;
 
 namespace CharacterController.FirstPerson
@@ -27,6 +28,7 @@ namespace CharacterController.FirstPerson
             public float Horizontal;
             public float Vertical;
             public float Speed;
+            public float JumpHeight;
             public float RunMultiplier;
             public float BackMultiplier;
             public float SideMultiplier;
@@ -50,13 +52,20 @@ namespace CharacterController.FirstPerson
         }
 
         [SerializeField] UnityEngine.CharacterController CharacterController;
+        
         public MovementSettings movementSettings = new MovementSettings();
         [SerializeField] AdvancedSettings advancedSettings = new AdvancedSettings();
+        
         [SerializeField] Vector3 MoveForce;
         [SerializeField] Vector3 SlopeDirection;
-        [SerializeField] float groundDistance;
+        
+        [SerializeField] String TurnOnSlopeByTag;
+        [SerializeField] GameObject currentHitObj;
+        [SerializeField] float curretnHitDistance;
+        [SerializeField] float MaxGroundDetectionDistance;
 
         [SerializeField] LayerMask GroundMask;
+
         private Vector3 _curve;
 
         // Start is called before the first frame update
@@ -68,15 +77,14 @@ namespace CharacterController.FirstPerson
 
         private void FixedUpdate()
         {
-            var bottom = CharacterController.bounds.center - (Vector3.up * CharacterController.bounds.extents.y);
-            _curve = bottom + (Vector3.up * CharacterController.radius);
-
-            movementSettings.Horizontal = Input.GetAxis("Horizontal");
-            movementSettings.Vertical = Input.GetAxis("Vertical");
-
+            UpdateData();
             UpdateCheckGround();
             UpdateSlopeStatus();
             UpdateDirectionalMove();
+
+            if (movementSettings.Jump && movementSettings.isGrounded)
+                Jump();
+
             UpdateGravity();
             Move();
         }
@@ -87,15 +95,21 @@ namespace CharacterController.FirstPerson
             CharacterController.Move(advancedSettings.Velocity * Time.deltaTime);
         }
 
+        private void Jump() 
+            => advancedSettings.Velocity.y += Mathf.Sqrt(movementSettings.JumpHeight * -2f * advancedSettings.Gravity);
+
         private void UpdateDirectionalMove()
         {
-            //MoveForce = this.transform.right * movementSettings.Horizontal + SlopeDirection * movementSettings.Vertical * movementSettings.Speed;
             MoveForce = this.transform.right * movementSettings.Horizontal + this.transform.forward * movementSettings.Vertical * movementSettings.Speed;
 
             if (movementSettings.Run)
                 MoveForce *= movementSettings.RunMultiplier;
 
-            //MoveForce *= SlopeMultiplier();
+            if (currentHitObj)
+            { 
+                if (currentHitObj.tag.Equals(TurnOnSlopeByTag)) 
+                    MoveForce *= SlopeMultiplier();
+            } 
         }
 
         private void UpdateGravity() 
@@ -110,21 +124,38 @@ namespace CharacterController.FirstPerson
             }
         }
 
+
         private void UpdateSlopeStatus()
         {
             RaycastHit hitInfo;
-
-            Vector3 start = this.transform.position;
-            start.y += +CharacterController.center.y;
-
-            Physics.Raycast(start, -Vector3.up, out hitInfo, 15);
-            SlopeDirection = Vector3.Cross(this.transform.right, hitInfo.normal);
-
-            // Road inclination angle
-            advancedSettings.AngleSlope = Vector3.Angle(-Vector3.up, SlopeDirection);
+            if(Physics.SphereCast(_curve, CharacterController.radius, -Vector3.up, out hitInfo, MaxGroundDetectionDistance, GroundMask, QueryTriggerInteraction.UseGlobal))
+            {
+                currentHitObj = hitInfo.transform.gameObject;
+                curretnHitDistance = hitInfo.distance;
+                SlopeDirection = Vector3.Cross(this.transform.right, hitInfo.normal);
+                // Road inclination angle
+                advancedSettings.AngleSlope = Vector3.Angle(-Vector3.up, SlopeDirection);
+            }
+            else 
+            {
+                curretnHitDistance = MaxGroundDetectionDistance;
+                currentHitObj = null;
+            }
 #if RAY
-            Debug.DrawLine(start, start + SlopeDirection * 5, Color.blue);
+            Vector3 origin = this.transform.position;
+            origin.y += +CharacterController.center.y;
+            Debug.DrawLine(origin, origin + SlopeDirection * 5, Color.blue);
+            Debug.DrawLine(_curve, _curve - Vector3.up * curretnHitDistance, Color.gray);
 #endif
+        }
+
+        private void UpdateData()
+        {
+            var bottom = CharacterController.bounds.center - (Vector3.up * CharacterController.bounds.extents.y);
+            _curve = bottom + (Vector3.up * CharacterController.radius);
+
+            movementSettings.Horizontal = Input.GetAxis("Horizontal");
+            movementSettings.Vertical = Input.GetAxis("Vertical");
         }
 
         private float SlopeMultiplier()
@@ -134,7 +165,8 @@ namespace CharacterController.FirstPerson
         {
 #if RAY
             Gizmos.color = Color.blue;
-            Gizmos.DrawWireSphere(_curve - new Vector3(0, 0.1f, 0), CharacterController.radius);
+            //Gizmos.DrawWireSphere(_curve - new Vector3(0, 0.1f, 0), CharacterController.radius);
+            Gizmos.DrawWireSphere(_curve - Vector3.up * curretnHitDistance, CharacterController.radius);
 #endif
         }
     }

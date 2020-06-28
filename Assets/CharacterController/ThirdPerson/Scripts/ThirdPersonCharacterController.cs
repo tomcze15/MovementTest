@@ -19,7 +19,8 @@ namespace CharacterController.ThirdPerson
         {
             //public AnimationCurve   RunTransitionCurve;
             //public AnimationCurve   JumpCurve;
-            public AnimationCurve   SlopeCurveModifier;         
+            public AnimationCurve SlopeCurveModifier;
+            public AnimationCurve JumpCurveModifier;
             public float Speed;
             public float RunMultiplier;
             public float BackMultiplier;
@@ -80,11 +81,12 @@ namespace CharacterController.ThirdPerson
 
         private Vector3 _bottom;
         private Vector3 _curve;
-        private float   _currentGravityForce;
+        private float _currentGravityForce;
 
         [SerializeField] Vector3 WalkDirection;
         [SerializeField] Vector3 SlopeDirection;
-        [SerializeField] List<GameObject> GroundEdgeList;
+        [SerializeField] Vector3 CurrentVelocity;
+        [SerializeField] List<GameObject> GroundEdgeList = new List<GameObject>();
 
         [Header("Compontents")]
         [SerializeField] Rigidbody Rigidbody;
@@ -95,39 +97,43 @@ namespace CharacterController.ThirdPerson
         {
             WalkDirection = Vector3.zero;
             SlopeDirection = Vector3.zero;
-            if (Rigidbody       == null)    Rigidbody       = GetComponent< Rigidbody        >();
-            if (CapsuleCollider == null)    CapsuleCollider = GetComponent< CapsuleCollider  >();
+            if (Rigidbody == null) Rigidbody = GetComponent<Rigidbody>();
+            if (CapsuleCollider == null) CapsuleCollider = GetComponent<CapsuleCollider>();
         }
 
         private void Start()
         {
-            _bottom = CapsuleCollider.bounds.center - (Vector3.up * CapsuleCollider.bounds.extents.y);
-            _curve = _bottom + (Vector3.up * CapsuleCollider.radius);
-            CreateEdgeObjects();
+            //CreateEdgeObjects();
         }
 
         private void FixedUpdate()
         {
-            CheckGroundStatus();
+            //CheckGroundStatus();
+            CheckGroundStatus2();
 
             if (movementSettings.Grounded && Rigidbody.velocity.y < 0)
                 Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, 0, Rigidbody.velocity.z);
 
             if (movementSettings.MoveForward)
-                if(movementSettings.MoveLeft == false && movementSettings.MoveRight == false && movementSettings.MoveBack == false)
+                if (movementSettings.MoveLeft == false && movementSettings.MoveRight == false && movementSettings.MoveBack == false)
                     RotateToDirectionCamera();
 
             UpdateWalkDirection();
             ApplyGravity();
 
             Move();
+
+            //if (movementSettings.Jump && movementSettings.Grounded)
+            //    JumpUp();
+
+            CurrentVelocity = Rigidbody.velocity;
         }
 
         private void Move()
         {
             if (movementSettings.MoveForward || movementSettings.MoveBack || movementSettings.MoveLeft || movementSettings.MoveRight)
             {
-                if(movementSettings.Grounded)
+                if (movementSettings.Grounded)
                     Rigidbody.velocity = WalkDirection;
                 else
                     Rigidbody.velocity = new Vector3(WalkDirection.x, _currentGravityForce * advancedSettings.GravityMultiplier, WalkDirection.z);
@@ -169,7 +175,8 @@ namespace CharacterController.ThirdPerson
 
         private void JumpUp()
         {
-            Rigidbody.AddForce(new Vector3(0, 5, 0) * movementSettings.JumpForce, ForceMode.Impulse);
+            //Rigidbody.AddForce(Vector3.up * movementSettings.JumpForce, ForceMode.VelocityChange);
+            Rigidbody.velocity = new Vector3(Rigidbody.velocity.x, Mathf.Sqrt(movementSettings.JumpForce * -2f * advancedSettings.Gravity) , Rigidbody.velocity.z);
         }
 
         /// <summary>
@@ -192,17 +199,22 @@ namespace CharacterController.ThirdPerson
 #endif
         }
 
-        private void CheckGroundStatus2() => 
-            movementSettings.Grounded = Physics.CheckSphere(GroundCheck.transform.position, 0.45f, groundMask);
+        private void CheckGroundStatus2()
+        {
+            _bottom = CapsuleCollider.bounds.center - (Vector3.up * CapsuleCollider.bounds.extents.y);
+            _curve = _bottom + (Vector3.up * CapsuleCollider.radius);
+            movementSettings.Grounded = Physics.CheckSphere(_curve, 0.45f, groundMask);
+        }
 
-        /*private void OnDrawGizmosSelected()
+        private void OnDrawGizmosSelected()
         {
 #if RAY
             Gizmos.color = Color.blue;
             Gizmos.DrawWireSphere(_curve, CapsuleCollider.radius);
 #endif
-        }*/
+        }
 
+        // It sometimes doesn't detect ground.
         private void CheckGroundStatus()
         {
             Vector3 bottom = CapsuleCollider.bounds.center - (Vector3.up * CapsuleCollider.bounds.extents.y);
